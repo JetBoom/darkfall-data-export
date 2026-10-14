@@ -1,0 +1,30 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Darkfall GLB viewer</title>
+<style>html,body{margin:0;height:100%;background:#1b1d22;color:#ddd;font:13px sans-serif;overflow:hidden}
+#i{position:fixed;top:8px;left:8px;background:#000a;padding:6px 10px;border-radius:4px}</style>
+<div id="i">loading…</div>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+<script type="module">
+// usage: serve the export output dir (python3 -m http.server) and open
+//   viewer/index.html?file=../maps/a05.glb   (path relative to this page; pass &wire=1 for wireframe)
+import * as THREE from 'three';
+import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+const q = new URLSearchParams(location.search);
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0x87a7c4);
+const cam = new THREE.PerspectiveCamera(60, innerWidth/innerHeight, 0.1, 100000);
+const r = new THREE.WebGLRenderer({antialias:true}); r.setSize(innerWidth, innerHeight); document.body.appendChild(r.domElement);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x556655, 1.6));
+const sun = new THREE.DirectionalLight(0xffffff, 1.5); sun.position.set(300,500,200); scene.add(sun);
+const ctl = new OrbitControls(cam, r.domElement);
+new GLTFLoader().load(q.get('file') || '../maps/a05.glb', g => {
+  if (q.get('wire')) g.scene.traverse(o => { if (o.material) o.material.wireframe = true; });
+  scene.add(g.scene);
+  const b = new THREE.Box3().setFromObject(g.scene), c = b.getCenter(new THREE.Vector3()), s = b.getSize(new THREE.Vector3());
+  ctl.target.copy(c); cam.position.copy(c).add(new THREE.Vector3(0, s.length()*0.5, s.length()*1.1)); ctl.update();
+  document.getElementById('i').textContent = (q.get('file')||'') + '  size ' + s.toArray().map(v=>v.toFixed(0)).join(' × ');
+}, undefined, e => document.getElementById('i').textContent = 'error: ' + e.message);
+addEventListener('resize', () => { cam.aspect = innerWidth/innerHeight; cam.updateProjectionMatrix(); r.setSize(innerWidth, innerHeight); });
+(function loop(){ requestAnimationFrame(loop); ctl.update(); r.render(scene, cam); })();
+</script>
